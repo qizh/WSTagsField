@@ -11,6 +11,8 @@ import UIKit
 open class WSTagView: UIView, UITextInputTraits {
 
     fileprivate let textLabel = UILabel()
+	
+	open fileprivate(set) var source: WSTag = .none
 
     open var displayText: String = "" {
         didSet {
@@ -103,7 +105,10 @@ open class WSTagView: UIView, UITextInputTraits {
     // MARK: - Initializers
 
     public init(tag: WSTag) {
+		self.source = tag
+		
         super.init(frame: CGRect.zero)
+		
         self.backgroundColor = tintColor
         self.layer.cornerRadius = cornerRadius
         self.layer.masksToBounds = true

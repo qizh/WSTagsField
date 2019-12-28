@@ -165,11 +165,16 @@ open class WSTagsField: UIScrollView {
 
     open var readOnly: Bool = false {
         didSet {
-            unselectAllTagViewsAnimated()
             textField.isEnabled = !readOnly
             repositionViews()
         }
     }
+	
+	open var tagsSelectable: Bool = true {
+		didSet {
+            unselectAllTagViewsAnimated()
+		}
+	}
 
     /// By default, the return key is used to create a tag in the field. You can change it, i.e., to use comma or space key instead.
     open var acceptTagOption: WSTagAcceptOption = .return
@@ -506,7 +511,7 @@ open class WSTagsField: UIScrollView {
     }
 
     open func selectTagView(_ tagView: WSTagView, animated: Bool = false) {
-        if self.readOnly {
+        if !self.tagsSelectable {
             return
         }
 
