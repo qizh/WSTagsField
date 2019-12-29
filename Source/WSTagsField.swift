@@ -686,7 +686,7 @@ extension WSTagsField {
         return totalRect.height
     }
 
-    fileprivate func enumerateItemRects(layoutWidth: CGFloat, using closure: (_ tagView: WSTagView<Context>?, _ tagRect: CGRect?, _ textFieldRect: CGRect?) -> Void) {
+    fileprivate func enumerateItemRects(layoutWidth: CGFloat, using closure: (_ tagView: WSTagView<Element>?, _ tagRect: CGRect?, _ textFieldRect: CGRect?) -> Void) {
         if layoutWidth == 0 {
             return
         }
@@ -749,7 +749,7 @@ extension WSTagsField {
         }
 
         var contentRect: CGRect = .null
-        enumerateItemRects(layoutWidth: self.bounds.width) { (tagView: WSTagView<Context>?, tagRect: CGRect?, textFieldRect: CGRect?) in
+        enumerateItemRects(layoutWidth: self.bounds.width) { (tagView: WSTagView<Element>?, tagRect: CGRect?, textFieldRect: CGRect?) in
             if let tagRect = tagRect, let tagView = tagView {
                 tagView.frame = tagRect
                 tagView.setNeedsLayout()
@@ -815,7 +815,7 @@ extension WSTagsField {
 
 extension WSTagsField {
 
-    public static func == (lhs: UITextField, rhs: WSTagsField<Context>) -> Bool {
+    public static func == (lhs: UITextField, rhs: WSTagsField<Element>) -> Bool {
         return lhs == rhs.textField
     }
 
