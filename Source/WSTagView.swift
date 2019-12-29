@@ -8,11 +8,11 @@
 
 import UIKit
 
-open class WSTagView: UIView, UITextInputTraits {
+open class WSTagView<Element: Hashable>: UIView, UITextInputTraits, UIKeyInput {
 
     fileprivate let textLabel = UILabel()
 	
-	open fileprivate(set) var source: WSTag = .none
+	open fileprivate(set) var source = WSTag<Element>("")
 
     open var displayText: String = "" {
         didSet {
@@ -61,7 +61,10 @@ open class WSTagView: UIView, UITextInputTraits {
     open override var tintColor: UIColor! {
         didSet { updateContent(animated: false) }
     }
-
+	open var customizedTintColor: UIColor {
+		source.style?.backgroundColor ?? tintColor
+	}
+	
     /// Background color to be used for selected state.
     open var selectedColor: UIColor? {
         didSet { updateContent(animated: false) }
@@ -104,12 +107,12 @@ open class WSTagView: UIView, UITextInputTraits {
 
     // MARK: - Initializers
 
-    public init(tag: WSTag) {
+    public init(tag: WSTag<Element>) {
 		self.source = tag
 		
         super.init(frame: CGRect.zero)
 		
-        self.backgroundColor = tintColor
+        self.backgroundColor = customizedTintColor
         self.layer.cornerRadius = cornerRadius
         self.layer.masksToBounds = true
 
@@ -139,7 +142,7 @@ open class WSTagView: UIView, UITextInputTraits {
     // MARK: - Styling
 
     fileprivate func updateColors() {
-        self.backgroundColor = selected ? selectedColor : tintColor
+        self.backgroundColor = selected ? selectedColor : customizedTintColor
         textLabel.textColor = selected ? selectedTextColor : textColor
     }
 
@@ -235,11 +238,9 @@ open class WSTagView: UIView, UITextInputTraits {
         }
         onDidRequestSelection?(self)
     }
-
-}
-
-extension WSTagView: UIKeyInput {
-
+	
+	// MARK: - Conform to UIKeyInput
+	
     public var hasText: Bool {
         return true
     }
@@ -251,5 +252,4 @@ extension WSTagView: UIKeyInput {
     public func deleteBackward() {
         onDidRequestDelete?(self, nil)
     }
-
 }

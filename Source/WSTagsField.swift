@@ -20,7 +20,7 @@ public struct WSTagAcceptOption: OptionSet {
     public static let  space   = WSTagAcceptOption(rawValue: 1 << 2)
 }
 
-open class WSTagsField: UIScrollView {
+open class WSTagsField<Element: Hashable>: UIScrollView, UITextFieldDelegate {
 
     fileprivate let textField = BackspaceDetectingTextField()
 
@@ -209,45 +209,45 @@ open class WSTagsField: UIScrollView {
         return false
     }
 
-    open fileprivate(set) var tags = [WSTag]()
-    internal var tagViews = [WSTagView]()
+    open fileprivate(set) var tags = [WSTag<Element>]()
+    internal var tagViews = [WSTagView<Element>]()
 
     // MARK: - Events
 
     /// Called when the text field should return.
-    open var onShouldAcceptTag: ((WSTagsField) -> Bool)?
+    open var onShouldAcceptTag: ((WSTagsField<Element>) -> Bool)?
 
     /// Called when the text field text has changed. You should update your autocompleting UI based on the text supplied.
-    open var onDidChangeText: ((WSTagsField, _ text: String?) -> Void)?
-
+    open var onDidChangeText: ((WSTagsField<Element>, _ text: String?) -> Void)?
+	
     /// Called when a tag has been added. You should use this opportunity to update your local list of selected items.
-    open var onDidAddTag: ((WSTagsField, _ tag: WSTag) -> Void)?
+    open var onDidAddTag: ((WSTagsField<Element>, _ tag: WSTag<Element>) -> Void)?
 
     /// Called when a tag has been removed. You should use this opportunity to update your local list of selected items.
-    open var onDidRemoveTag: ((WSTagsField, _ tag: WSTag) -> Void)?
+    open var onDidRemoveTag: ((WSTagsField<Element>, _ tag: WSTag<Element>) -> Void)?
 
     /// Called when a tag has been selected.
-    open var onDidSelectTagView: ((WSTagsField, _ tag: WSTagView) -> Void)?
+    open var onDidSelectTagView: ((WSTagsField<Element>, _ tag: WSTagView<Element>) -> Void)?
 
     /// Called when a tag has been unselected.
-    open var onDidUnselectTagView: ((WSTagsField, _ tag: WSTagView) -> Void)?
+    open var onDidUnselectTagView: ((WSTagsField<Element>, _ tag: WSTagView<Element>) -> Void)?
 
     /// Called before a tag is added to the tag list. Here you return false to discard tags you do not want to allow.
-    open var onValidateTag: ((WSTag, [WSTag]) -> Bool)?
+    open var onValidateTag: ((WSTag<Element>, [WSTag<Element>]) -> Bool)?
 
     /**
      * Called when the user attempts to press the Return key with text partially typed.
      * @return A Tag for a match (typically the first item in the matching results),
      * or nil if the text shouldn't be accepted.
      */
-    open var onVerifyTag: ((WSTagsField, _ text: String) -> Bool)?
+    open var onVerifyTag: ((WSTagsField<Element>, _ text: String) -> Bool)?
 
     /**
      * Called when the view has updated its own height. If you are
      * not using Autolayout, you should use this method to update the
      * frames to make sure the tag view still fits.
      */
-    open var onDidChangeHeightTo: ((WSTagsField, _ height: CGFloat) -> Void)?
+    open var onDidChangeHeightTo: ((WSTagsField<Element>, _ height: CGFloat) -> Void)?
 
     // MARK: - Properties
 
@@ -362,15 +362,15 @@ open class WSTagsField: UIScrollView {
         tags.forEach { addTag($0) }
     }
 
-    open func addTags(_ tags: [WSTag]) {
+    open func addTags(_ tags: [WSTag<Element>]) {
         tags.forEach { addTag($0) }
     }
 
     open func addTag(_ tag: String) {
-        addTag(WSTag(tag))
+        addTag(WSTag<Element>(tag))
     }
 
-    open func addTag(_ tag: WSTag) {
+    open func addTag(_ tag: WSTag<Element>) {
         if let onValidateTag = onValidateTag, !onValidateTag(tag, self.tags) {
             return
         }
@@ -380,7 +380,7 @@ open class WSTagsField: UIScrollView {
 
         self.tags.append(tag)
 
-        let tagView = WSTagView(tag: tag)
+        let tagView = WSTagView<Element>(tag: tag)
         tagView.font = self.font
         tagView.tintColor = self.tintColor
         tagView.textColor = self.textColor
@@ -432,10 +432,10 @@ open class WSTagsField: UIScrollView {
     }
 
     open func removeTag(_ tag: String) {
-        removeTag(WSTag(tag))
+        removeTag(WSTag<Element>(tag))
     }
 
-    open func removeTag(_ tag: WSTag) {
+    open func removeTag(_ tag: WSTag<Element>) {
         if let index = self.tags.firstIndex(of: tag) {
             removeTagAtIndex(index)
         }
@@ -461,10 +461,10 @@ open class WSTagsField: UIScrollView {
     }
 
     @discardableResult
-    open func tokenizeTextFieldText() -> WSTag? {
+    open func tokenizeTextFieldText() -> WSTag<Element>? {
         let text = self.textField.text?.trimmingCharacters(in: CharacterSet.whitespaces) ?? ""
         if text.isEmpty == false && (onVerifyTag?(self, text) ?? true) {
-            let tag = WSTag(text)
+            let tag = WSTag<Element>(text)
             addTag(tag)
 
             self.textField.text = ""
@@ -510,7 +510,7 @@ open class WSTagsField: UIScrollView {
         }
     }
 
-    open func selectTagView(_ tagView: WSTagView, animated: Bool = false) {
+    open func selectTagView(_ tagView: WSTagView<Element>, animated: Bool = false) {
         if !self.tagsSelectable {
             return
         }
@@ -540,13 +540,9 @@ open class WSTagsField: UIScrollView {
 
     // Reposition tag views when bounds changes.
     fileprivate var layerBoundsObserver: NSKeyValueObservation?
-
-}
-
-// MARK: TextField Properties
-
-extension WSTagsField {
-
+	
+	// MARK: TextField Properties
+	
     public var keyboardType: UIKeyboardType {
         get { return textField.keyboardType }
         set { textField.keyboardType = newValue }
@@ -595,7 +591,40 @@ extension WSTagsField {
     var isTextFieldEmpty: Bool {
         return textField.text?.isEmpty ?? true
     }
+	
+	// MARK: Conform to UITextFieldDelegate
 
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        textDelegate?.textFieldDidBeginEditing?(textField)
+        unselectAllTagViewsAnimated(true)
+    }
+
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        textDelegate?.textFieldDidEndEditing?(textField)
+    }
+
+    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if let onShouldAcceptTag = onShouldAcceptTag, !onShouldAcceptTag(self) {
+            return false
+        }
+        if !isTextFieldEmpty, acceptTagOption.contains(.return) {
+            tokenizeTextFieldText()
+            return true
+        }
+        return textDelegate?.textFieldShouldReturn?(textField) ?? false
+    }
+
+    public func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        if acceptTagOption.contains(.comma) && string == "," && onShouldAcceptTag?(self) ?? true {
+            tokenizeTextFieldText()
+            return false
+        }
+        if acceptTagOption.contains(.space) && string == " " && onShouldAcceptTag?(self) ?? true {
+            tokenizeTextFieldText()
+            return false
+        }
+        return true
+    }
 }
 
 // MARK: Private functions
@@ -657,7 +686,7 @@ extension WSTagsField {
         return totalRect.height
     }
 
-    fileprivate func enumerateItemRects(layoutWidth: CGFloat, using closure: (_ tagView: WSTagView?, _ tagRect: CGRect?, _ textFieldRect: CGRect?) -> Void) {
+    fileprivate func enumerateItemRects(layoutWidth: CGFloat, using closure: (_ tagView: WSTagView<Context>?, _ tagRect: CGRect?, _ textFieldRect: CGRect?) -> Void) {
         if layoutWidth == 0 {
             return
         }
@@ -720,7 +749,7 @@ extension WSTagsField {
         }
 
         var contentRect: CGRect = .null
-        enumerateItemRects(layoutWidth: self.bounds.width) { (tagView: WSTagView?, tagRect: CGRect?, textFieldRect: CGRect?) in
+        enumerateItemRects(layoutWidth: self.bounds.width) { (tagView: WSTagView<Context>?, tagRect: CGRect?, textFieldRect: CGRect?) in
             if let tagRect = tagRect, let tagView = tagView {
                 tagView.frame = tagRect
                 tagView.setNeedsLayout()
@@ -784,45 +813,9 @@ extension WSTagsField {
 
 }
 
-extension WSTagsField: UITextFieldDelegate {
-
-    public func textFieldDidBeginEditing(_ textField: UITextField) {
-        textDelegate?.textFieldDidBeginEditing?(textField)
-        unselectAllTagViewsAnimated(true)
-    }
-
-    public func textFieldDidEndEditing(_ textField: UITextField) {
-        textDelegate?.textFieldDidEndEditing?(textField)
-    }
-
-    public func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        if let onShouldAcceptTag = onShouldAcceptTag, !onShouldAcceptTag(self) {
-            return false
-        }
-        if !isTextFieldEmpty, acceptTagOption.contains(.return) {
-            tokenizeTextFieldText()
-            return true
-        }
-        return textDelegate?.textFieldShouldReturn?(textField) ?? false
-    }
-
-    public func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        if acceptTagOption.contains(.comma) && string == "," && onShouldAcceptTag?(self) ?? true {
-            tokenizeTextFieldText()
-            return false
-        }
-        if acceptTagOption.contains(.space) && string == " " && onShouldAcceptTag?(self) ?? true {
-            tokenizeTextFieldText()
-            return false
-        }
-        return true
-    }
-
-}
-
 extension WSTagsField {
 
-    public static func == (lhs: UITextField, rhs: WSTagsField) -> Bool {
+    public static func == (lhs: UITextField, rhs: WSTagsField<Context>) -> Bool {
         return lhs == rhs.textField
     }
 

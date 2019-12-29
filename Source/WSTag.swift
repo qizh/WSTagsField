@@ -7,16 +7,31 @@
 //
 
 import Foundation
+import UIKit
 
-public struct WSTag: Hashable, Equatable {
-    public let text: String
-    public let context: AnyHashable?
-	
+public protocol WSStyledTag {
+	var text: String { get }
+	var style: WSTagStyle? { get }
+}
 
-    public init(_ text: String, context: AnyHashable? = nil) {
-        self.text = text
-        self.context = context
-    }
+public struct WSTagStyle: Hashable {
+	public let backgroundColor: UIColor
 	
-	static let none = WSTag("")
+	public init(backgroundColor: UIColor) {
+		self.backgroundColor = backgroundColor
+	}
+}
+
+public struct WSTag<Element: Hashable>: WSStyledTag, Hashable {
+	public typealias Style = WSTagStyle
+	
+	public let text: String
+	public let context: Element?
+	public let style: Style?
+	
+	public init(_ text: String, context: Element? = nil, style: Style? = nil) {
+		self.text = text
+		self.context = context
+		self.style = style
+	}
 }
